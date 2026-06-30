@@ -1328,63 +1328,35 @@ rankNet <- function(object, slot.name = "netP", measure = c("weight","count"), m
     }
     
     if (stacked) {
-  
-  ## ---- fix stacked=TRUE zero/near-zero blank bar issue ----
-  ## Only used for plotting. Do NOT change original contribution.
-  eps <- 1e-12
-  
-  df$contribution.plot <- df$contribution
-  
-  df <- df %>%
-    dplyr::group_by(name) %>%
-    dplyr::mutate(
-      contribution.plot = dplyr::case_when(
-        sum(contribution, na.rm = TRUE) > 0 ~ pmax(contribution, eps),
-        TRUE ~ contribution
-      )
-    ) %>%
-    dplyr::ungroup()
-  
-  gg <- ggplot(
-    df,
-    aes(
-      x = name,
-      y = contribution.plot,
-      fill = group
-    )
-  ) +
-    geom_bar(
-      stat = "identity",
-      position = "fill",
-      width = bar.w
-    ) +
-    theme_classic() +
-    theme(
-      axis.text = element_text(size = font.size),
-      axis.text.x = element_text(
-        angle = x.rotation,
-        hjust = 1,
-        size = font.size
-      ),
-      axis.title.y = element_text(size = font.size)
-    ) +
-    xlab("") +
-    ylab("Relative information flow")
-  
-  if (!is.null(color.use)) {
-    gg <- gg + scale_fill_manual(values = color.use)
-  }
-  
-  if (!is.null(title)) {
-    gg <- gg +
-      ggtitle(title) +
-      theme(plot.title = element_text(hjust = 0.5))
-  }
-  
-  if (do.flip) {
-    gg <- gg + coord_flip()
-  }
-} else {
+      
+      df <- df %>%
+        dplyr::group_by(name) %>%
+        dplyr::mutate(
+          contribution.total = sum(abs(contribution), na.rm = TRUE),
+          contribution.plot = dplyr::if_else(
+            contribution.total > 0,
+            abs(contribution) / contribution.total,
+            0
+          )
+        ) %>%
+        dplyr::ungroup()
+      
+      gg <- ggplot(
+        df,
+        aes(
+          x = name,
+          y = contribution.plot,
+          fill = group
+        )
+      ) +
+        geom_bar(
+          stat = "identity",
+          position = "stack",
+          width = bar.w
+        ) +
+        xlab("") +
+        ylab("Relative information flow")
+    } else {
       if (show.raw) {
         gg <- ggplot(df, aes(x=name, y=contribution, fill = group)) + geom_bar(stat="identity",width = bar.w, position = position_dodge(0.8)) +
           xlab("") + ylab(ylabel) #+ coord_flip()#+ theme(axis.text.x = element_blank(),axis.ticks.x = element_blank())
